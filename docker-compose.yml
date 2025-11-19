@@ -1,0 +1,65 @@
+version: '3.8'
+
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: filestorage-sqlserver
+    environment:
+      - ACCEPT_EULA=Y
+      - SA_PASSWORD=YourStrong@Passw0rd
+      - MSSQL_PID=Developer
+    ports:
+      - "1433:1433"
+    volumes:
+      - sqlserver-data:/var/opt/mssql
+    healthcheck:
+      test: /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P YourStrong@Passw0rd -Q "SELECT 1" || exit 1
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+  backend:
+    build:
+      context: ./Backend
+      dockerfile: Dockerfile
+    container_name: filestorage-backend
+    ports:
+      - "7000:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:8080
+      - ConnectionStrings__DefaultConnection=Server=sqlserver;Database=FileStorageDb;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=True;
+      - Storage__RootPath=/app/_storage
+      - Jwt__Secret=YourSuperSecretKeyThatIsAtLeast32CharactersLong!
+      - Jwt__Issuer=FileStorageAPI
+      - Jwt__Audience=FileStorageClient
+    volumes:
+      - backend-storage:/app/_storage
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+    networks:
+      - filestorage-network
+
+  frontend:
+    build:
+      context: ./Frontend
+      dockerfile: Dockerfile
+    container_name: filestorage-frontend
+    ports:
+      - "4200:80"
+    environment:
+      - API_URL=http://localhost:7000
+    depends_on:
+      - backend
+    networks:
+      - filestorage-network
+
+volumes:
+  sqlserver-data:
+  backend-storage:
+
+networks:
+  filestorage-network:
+    driver: bridge
+
