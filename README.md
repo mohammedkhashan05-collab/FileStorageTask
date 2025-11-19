@@ -29,12 +29,7 @@ cd Frontend
 npm install
 npm start
 ```
-
-## Default Users
-
-- Username: `admin` (role: admin)
-- Username: `user` (role: user)
-- Password: any password works for demo
+ 
 
 ## API Endpoints
 
